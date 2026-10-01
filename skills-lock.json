@@ -148,6 +148,20 @@
       "skillPath": "skills/migrate-radix-to-base/SKILL.md",
       "computedHash": "e1f2030ee5059be3dff0812ca0e4b995ee9fa3132176f049ebe6c90346a6755e"
     },
+    "neon": {
+      "source": "https://github.int.exe.xyz/neondatabase/agent-skills.git",
+      "sourceUrl": "https://github.int.exe.xyz/neondatabase/agent-skills.git",
+      "sourceType": "git",
+      "skillPath": "skills/neon/SKILL.md",
+      "computedHash": "07ebeb0077c3a10fd82a87ee45a75f0c071bf118b95ea61da90907c8fc05a2f4"
+    },
+    "neon-postgres": {
+      "source": "https://github.int.exe.xyz/neondatabase/agent-skills.git",
+      "sourceUrl": "https://github.int.exe.xyz/neondatabase/agent-skills.git",
+      "sourceType": "git",
+      "skillPath": "skills/neon-postgres/SKILL.md",
+      "computedHash": "b9763d379a3c5039e5555540a1333b1c529e2365d4f0b8fe2998ba41509814c5"
+    },
     "shadcn": {
       "source": "https://github.int.exe.xyz/shadcn/ui.git",
       "sourceUrl": "https://github.int.exe.xyz/shadcn/ui.git",
