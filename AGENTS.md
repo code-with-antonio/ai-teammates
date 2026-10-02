@@ -20,6 +20,42 @@ This is a development project. There is no backwards compatibility and the data 
 - Apply schema changes only with `npm run db:push` (`drizzle-kit push`).
 - Never use migrations: do not run `drizzle-kit generate` or `drizzle-kit migrate`, and do not create migration files or a `drizzle/` folder.
 
+## Forms
+
+Reference implementation: `db/schema.ts` (`botInsertSchema`), `actions/bot.ts` (`createBot`), `components/bot-dialog.tsx`.
+
+Schema
+
+- Derive the validation schema from the Drizzle table with `createInsertSchema` from `drizzle-zod`, and export it from `db/schema.ts` next to the table. Do not hand-write a parallel zod object.
+- `.omit()` every column the user must not supply: `id`, `userId`, timestamps, and anything generated server-side.
+- Put trimming, length limits and user-facing error messages in the schema refinements, so the client and the server share them.
+- Export the inferred type (`z.infer<typeof schema>`) and use it as the action's argument type.
+
+Server action
+
+- Actions live in `actions/<entity>.ts` with `"use server"` at the top of the file.
+- Start every action with `const { isAuthenticated, userId } = await auth()` from `@clerk/nextjs/server` and throw if not authenticated. Always take `userId` from the session, never from the input.
+- Re-validate the input with `schema.parse()` in the action; client validation is not trusted.
+- Store empty optional text as `null`, then `revalidatePath` the affected route and return the created row.
+
+Form component
+
+- Use `react-hook-form` with `zodResolver(schema)` and the same schema the action uses. Give every field a `defaultValues` entry (`""` for text).
+- Compose with `FieldGroup` + `Controller` + `Field`: `data-invalid` on `Field`, `aria-invalid` on the control, errors through `<FieldError errors={[fieldState.error]} />`. Never lay out fields with raw `div`s and `Label`.
+- Submit by calling the server action inside `form.handleSubmit`, wrapped in `try/catch`. Report success and failure with `toast.add` from `@/components/ui/toast`.
+- While submitting, disable the submit button and show `<Spinner data-icon="inline-start" />`. Non-submit buttons inside the form need `type="button"`.
+- Generate random values (seeds, ids) in a `useState(() => ...)` initializer or an event handler, never directly during render.
+
+Forms in dialogs
+
+- Keep the form in its own component rendered inside `DialogContent`, so it mounts on open and its state resets every time.
+- The dialog component owns the `open` state and its `DialogTrigger`; the form closes it through an `onCreated`-style callback after success.
+- Put `DialogFooter` inside the `<form>` so the submit button works, and use `DialogClose` for Cancel.
+
+Dependencies
+
+- `zod` must stay on v4. If `npm install` fails with a peer conflict from `@hookform/resolvers`, pin `zod@^4` in the same install command rather than using `--force` or `--legacy-peer-deps`.
+
 ## DiceBear
 
 Use DiceBear 10. Documentation: https://www.dicebear.com/llms.txt
