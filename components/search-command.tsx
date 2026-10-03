@@ -4,7 +4,6 @@ import { createContext, useContext, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { SearchIcon } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
 import {
   Command,
   CommandDialog,
@@ -15,6 +14,11 @@ import {
   CommandList,
 } from "@/components/ui/command"
 import { Kbd } from "@/components/ui/kbd"
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar"
 
 // Lets an item close the dialog it is rendered in
 const SearchCommandContext = createContext<() => void>(() => {})
@@ -37,16 +41,20 @@ function SearchCommand({ children }: { children: React.ReactNode }) {
 
   return (
     <SearchCommandContext.Provider value={() => setOpen(false)}>
-      {/* Mirrors the Input classes on top of the outline button, which keeps its own hover. */}
-      <Button
-        variant="outline"
-        className="w-full min-w-0 justify-start border-input bg-transparent px-2.5 py-1 text-base font-normal text-muted-foreground md:text-sm"
-        onClick={() => setOpen(true)}
-      >
-        <SearchIcon data-icon="inline-start" />
-        Search
-        <Kbd className="ml-auto">⌘K</Kbd>
-      </Button>
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            variant="outline"
+            tooltip="Search"
+            className="text-muted-foreground group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:text-sidebar-foreground group-data-[collapsible=icon]:shadow-none group-data-[collapsible=icon]:hover:bg-sidebar-accent"
+            onClick={() => setOpen(true)}
+          >
+            <SearchIcon />
+            <span>Search</span>
+            <Kbd className="ml-auto">⌘K</Kbd>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
       <CommandDialog
         open={open}
         onOpenChange={setOpen}
