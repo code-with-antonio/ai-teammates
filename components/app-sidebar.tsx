@@ -1,8 +1,10 @@
+import Link from "next/link"
 import { UserButton } from "@clerk/nextjs"
 import { formatDistanceToNowStrict } from "date-fns"
 
 import { ChatAvatar } from "@/components/chat-avatar"
 import { CreateMenu } from "@/components/create-menu"
+import { SearchCommand, SearchCommandItem } from "@/components/search-command"
 import {
   Sidebar,
   SidebarContent,
@@ -21,8 +23,23 @@ export async function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="flex-row justify-end">
-        <CreateMenu />
+      <SidebarHeader>
+        <div className="flex justify-end">
+          <CreateMenu />
+        </div>
+        <SearchCommand>
+          {chats.map((chat) => (
+            <SearchCommandItem
+              key={chat.id}
+              href={`/chats/${chat.id}`}
+              value={chat.id}
+              keywords={[chat.name ?? chat.bot.name]}
+            >
+              <ChatAvatar seed={chat.bot.avatar} />
+              <span className="truncate">{chat.name ?? chat.bot.name}</span>
+            </SearchCommandItem>
+          ))}
+        </SearchCommand>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
@@ -30,7 +47,10 @@ export async function AppSidebar() {
             <SidebarMenu>
               {chats.map((chat) => (
                 <SidebarMenuItem key={chat.id}>
-                  <SidebarMenuButton size="lg">
+                  <SidebarMenuButton
+                    size="lg"
+                    render={<Link href={`/chats/${chat.id}`} />}
+                  >
                     <ChatAvatar seed={chat.bot.avatar} />
                     <div className="grid flex-1 text-left leading-tight">
                       <div className="flex items-baseline gap-2">
