@@ -204,14 +204,28 @@ function BotForm({ onCreated }: { onCreated: () => void }) {
   )
 }
 
-function BotDialog({ children }: { children: React.ReactNode }) {
-  const [open, setOpen] = useState(false)
+// Renders its own trigger from `children`. Without children it has no trigger
+// and is opened by the parent through `open` / `onOpenChange`.
+function BotDialog({
+  children,
+  open: controlledOpen,
+  onOpenChange,
+}: {
+  children?: React.ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const open = controlledOpen ?? uncontrolledOpen
+  const setOpen = onOpenChange ?? setUncontrolledOpen
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant="secondary" />}>
-        {children}
-      </DialogTrigger>
+      {children && (
+        <DialogTrigger render={<Button variant="secondary" />}>
+          {children}
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>New bot</DialogTitle>
