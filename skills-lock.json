@@ -1,6 +1,13 @@
 {
   "version": 1,
   "skills": {
+    "ai-elements": {
+      "source": "https://github.int.exe.xyz/vercel/ai-elements.git",
+      "sourceUrl": "https://github.int.exe.xyz/vercel/ai-elements.git",
+      "sourceType": "git",
+      "skillPath": "skills/ai-elements/SKILL.md",
+      "computedHash": "c5faf42a5aa6bf02f7310dfcf0b6c45d956c98afa520cb16ec048df7ee263af5"
+    },
     "clerk": {
       "source": "https://github.int.exe.xyz/clerk/skills.git",
       "sourceUrl": "https://github.int.exe.xyz/clerk/skills.git",
