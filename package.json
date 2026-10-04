@@ -21,6 +21,7 @@
     "@dicebear/core": "^10.7.0",
     "@dicebear/styles": "^10.6.0",
     "@hookform/resolvers": "^5.9.1",
+    "@neon/ai-sdk-provider": "^1.0.0",
     "@neon/config": "^1.8.3",
     "@neon/env": "^1.4.8",
     "@radix-ui/react-use-controllable-state": "^1.2.6",
