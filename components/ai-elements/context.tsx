@@ -56,7 +56,7 @@ export const Context = ({
 
   return (
     <ContextContext.Provider value={contextValue}>
-      <HoverCard closeDelay={0} openDelay={0} {...props} />
+      <HoverCard {...props} />
     </ContextContext.Provider>
   );
 };
@@ -113,7 +113,7 @@ export const ContextTrigger = ({ children, ...props }: ContextTriggerProps) => {
   }).format(usedPercent);
 
   return (
-    <HoverCardTrigger>
+    <HoverCardTrigger closeDelay={0} delay={0}>
       {children ?? (
         <Button type="button" variant="ghost" {...props}>
           <span className="font-medium text-muted-foreground">
@@ -336,7 +336,7 @@ export const ContextReasoningUsage = ({
   ...props
 }: ContextReasoningUsageProps) => {
   const { usage, modelId } = useContextValue();
-  const reasoningTokens = usage?.reasoningTokens ?? 0;
+  const reasoningTokens = usage?.outputTokenDetails.reasoningTokens ?? 0;
 
   if (children) {
     return children;
@@ -376,7 +376,7 @@ export const ContextCacheUsage = ({
   ...props
 }: ContextCacheUsageProps) => {
   const { usage, modelId } = useContextValue();
-  const cacheTokens = usage?.cachedInputTokens ?? 0;
+  const cacheTokens = usage?.inputTokenDetails.cacheReadTokens ?? 0;
 
   if (children) {
     return children;

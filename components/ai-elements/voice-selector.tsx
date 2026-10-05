@@ -56,7 +56,11 @@ export const useVoiceSelector = () => {
   return context;
 };
 
-export type VoiceSelectorProps = ComponentProps<typeof Dialog> & {
+export type VoiceSelectorProps = Omit<
+  ComponentProps<typeof Dialog>,
+  "onOpenChange"
+> & {
+  onOpenChange?: (open: boolean) => void;
   value?: string;
   defaultValue?: string;
   onValueChange?: (value: string | undefined) => void;
