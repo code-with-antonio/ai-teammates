@@ -6,7 +6,7 @@ export const chatAgent = chat.agent({
   id: "chat",
   run: async ({ messages, signal, streamText }) =>
     streamText({
-      model: neon("claude-sonnet-5"),
+      model: neon("gpt-5"),
       messages,
       abortSignal: signal,
     }),
