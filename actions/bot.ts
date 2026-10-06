@@ -2,6 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server"
 import { and, eq, inArray } from "drizzle-orm"
+import { nanoid } from "nanoid"
 import { revalidatePath } from "next/cache"
 
 import { db } from "@/db"
@@ -12,6 +13,7 @@ import {
   chats,
   type BotInsert,
 } from "@/db/schema"
+import { createBotSandbox, deleteBotSandbox } from "@/lib/daytona"
 
 export async function createBot(values: BotInsert) {
   const { isAuthenticated, userId } = await auth()
@@ -19,26 +21,42 @@ export async function createBot(values: BotInsert) {
 
   const data = botInsertSchema.parse(values)
 
-  // A new bot always comes with its direct chat; all three rows or none
-  const bot = await db.transaction(async (tx) => {
-    const [bot] = await tx
-      .insert(bots)
-      .values({ ...data, instructions: data.instructions || null, userId })
-      .returning()
+  // Generated here so the sandbox can be labelled before the row exists
+  const id = nanoid()
+  const sandboxId = await createBotSandbox(id)
 
-    const [chat] = await tx
-      .insert(chats)
-      .values({ userId, kind: "direct" })
-      .returning({ id: chats.id })
+  try {
+    // A new bot always comes with its direct chat; all three rows or none
+    const bot = await db.transaction(async (tx) => {
+      const [bot] = await tx
+        .insert(bots)
+        .values({
+          ...data,
+          id,
+          instructions: data.instructions || null,
+          userId,
+          sandboxId,
+        })
+        .returning()
 
-    await tx.insert(chatMembers).values({ chatId: chat.id, botId: bot.id })
+      const [chat] = await tx
+        .insert(chats)
+        .values({ userId, kind: "direct" })
+        .returning({ id: chats.id })
+
+      await tx.insert(chatMembers).values({ chatId: chat.id, botId: bot.id })
+
+      return bot
+    })
+
+    revalidatePath("/")
 
     return bot
-  })
-
-  revalidatePath("/")
-
-  return bot
+  } catch (error) {
+    // No bot, no sandbox; the original error is the one worth reporting
+    await deleteBotSandbox(sandboxId).catch(() => {})
+    throw error
+  }
 }
 
 export async function updateBot(botId: string, values: BotInsert) {
@@ -63,6 +81,15 @@ export async function updateBot(botId: string, values: BotInsert) {
 export async function deleteBot(botId: string) {
   const { isAuthenticated, userId } = await auth()
   if (!isAuthenticated) throw new Error("Unauthorized")
+
+  const [owned] = await db
+    .select({ sandboxId: bots.sandboxId })
+    .from(bots)
+    .where(and(eq(bots.id, botId), eq(bots.userId, userId)))
+  if (!owned) throw new Error("Bot not found")
+
+  // Sandbox first: if this fails the bot stays and the delete can be retried
+  await deleteBotSandbox(owned.sandboxId)
 
   await db.transaction(async (tx) => {
     // A direct chat is nothing without its bot; memberships go with the bot

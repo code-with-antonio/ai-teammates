@@ -7,6 +7,7 @@ import {
   type ChatStartSessionParams,
 } from "@trigger.dev/sdk/ai"
 
+import type { ChatUIMessage } from "@/lib/sandbox-tools"
 import { getChat } from "@/queries/chats"
 import type { chatAgent } from "@/trigger/chat"
 
@@ -39,5 +40,8 @@ export async function mintChatAccessToken(chatId: string) {
 export async function loadTranscript(params: { chatId: string }) {
   await assertChatOwner(params.chatId)
 
-  return loadStoredTranscript(params)
+  const transcript = await loadStoredTranscript(params)
+
+  // Stored untyped, but only this agent ever writes it
+  return { ...transcript, messages: transcript.messages as ChatUIMessage[] }
 }
