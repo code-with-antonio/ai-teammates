@@ -17,6 +17,24 @@ export async function getBotSandbox(sandboxId: string) {
   return sandbox
 }
 
+// Where the sandbox image serves noVNC and its websocket
+const VNC_PORT = 6080
+
+// A websocket address a browser can open the bot's desktop on. The address
+// carries its own access, good for this port only and for an hour.
+export async function getBotDesktopUrl(sandboxId: string) {
+  const sandbox = await getBotSandbox(sandboxId)
+
+  // Starting is slow even when everything is up, so ask first
+  const { status } = await sandbox.computerUse.getStatus()
+  if (status !== "active") await sandbox.computerUse.start()
+
+  const preview = await sandbox.getSignedPreviewUrl(VNC_PORT, 60 * 60)
+  const url = new URL("/websockify", preview.url)
+  url.protocol = "wss:"
+  return url.toString()
+}
+
 export async function deleteBotSandbox(sandboxId: string) {
   try {
     const sandbox = await daytona.get(sandboxId)

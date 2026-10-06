@@ -7,6 +7,7 @@ import {
   type ChatStartSessionParams,
 } from "@trigger.dev/sdk/ai"
 
+import { getBotDesktopUrl } from "@/lib/daytona"
 import type { ChatUIMessage } from "@/lib/sandbox-tools"
 import { getChat } from "@/queries/chats"
 import type { chatAgent } from "@/trigger/chat"
@@ -44,4 +45,11 @@ export async function loadTranscript(params: { chatId: string }) {
 
   // Stored untyped, but only this agent ever writes it
   return { ...transcript, messages: transcript.messages as ChatUIMessage[] }
+}
+
+export async function getDesktopUrl(chatId: string) {
+  const chat = await getChat(chatId)
+  if (!chat) throw new Error("Chat not found")
+
+  return getBotDesktopUrl(chat.bot.sandboxId)
 }
