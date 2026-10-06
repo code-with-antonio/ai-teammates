@@ -1,3 +1,5 @@
+@AGENTS.md
+
 <!-- TRIGGER.DEV SKILLS START -->
 ## Trigger.dev agent skills
 
