@@ -1,9 +1,9 @@
 import type { Sandbox } from "@daytona/sdk"
-import type { InferChatUIMessageFromTools } from "@trigger.dev/sdk/ai"
-import { tool } from "ai"
+import { tool, type InferUITools, type UIDataTypes, type UIMessage } from "ai"
 import { z } from "zod"
 
 import { getBotSandbox } from "@/lib/daytona"
+import type { HandoffTools } from "@/lib/handoff-tool"
 
 // Enough for a model to work with, without one noisy command filling its context
 const MAX_TEXT_LENGTH = 20_000
@@ -58,35 +58,48 @@ function screenshotToModelOutput({ output }: { output: Screenshot }) {
   }
 }
 
-// One bot's sandbox as a tool set. The sandbox is only looked up, woken and
-// given a desktop when a tool first needs it.
-export function createSandboxTools(getSandboxId: () => Promise<string>) {
-  let sandbox: Promise<Sandbox> | undefined
-  let desktop: Promise<Sandbox> | undefined
+// A bot's sandbox as a tool set. The sandbox is only looked up, woken and
+// given a desktop when a tool first needs it. The ID is asked for on every call
+// and each sandbox is kept, since a handoff changes whose sandbox this is.
+export function createSandboxTools(
+  getSandboxId: () => string | Promise<string>
+) {
+  const sandboxes = new Map<string, Promise<Sandbox>>()
+  const desktops = new Map<string, Promise<Sandbox>>()
 
-  function getSandbox() {
-    sandbox ??= getSandboxId()
-      .then(getBotSandbox)
-      .catch((error) => {
+  async function getSandbox() {
+    const id = await getSandboxId()
+
+    let sandbox = sandboxes.get(id)
+    if (!sandbox) {
+      sandbox = getBotSandbox(id).catch((error) => {
         // Let the next tool call try again
-        sandbox = undefined
+        sandboxes.delete(id)
         throw error
       })
+      sandboxes.set(id, sandbox)
+    }
     return sandbox
   }
 
-  function getDesktop() {
-    desktop ??= getSandbox()
-      .then(async (sandbox) => {
-        // Starting is slow even when everything is up, so ask first
-        const { status } = await sandbox.computerUse.getStatus()
-        if (status !== "active") await sandbox.computerUse.start()
-        return sandbox
-      })
-      .catch((error) => {
-        desktop = undefined
-        throw error
-      })
+  async function getDesktop() {
+    const id = await getSandboxId()
+
+    let desktop = desktops.get(id)
+    if (!desktop) {
+      desktop = getSandbox()
+        .then(async (sandbox) => {
+          // Starting is slow even when everything is up, so ask first
+          const { status } = await sandbox.computerUse.getStatus()
+          if (status !== "active") await sandbox.computerUse.start()
+          return sandbox
+        })
+        .catch((error) => {
+          desktops.delete(id)
+          throw error
+        })
+      desktops.set(id, desktop)
+    }
     return desktop
   }
 
@@ -288,4 +301,10 @@ export function createSandboxTools(getSandboxId: () => Promise<string>) {
 }
 
 export type SandboxTools = ReturnType<typeof createSandboxTools>
-export type ChatUIMessage = InferChatUIMessageFromTools<SandboxTools>
+// Replies carry the bot that started them, so a group chat can show who answered
+export type ChatMessageMetadata = { botId?: string }
+export type ChatUIMessage = UIMessage<
+  ChatMessageMetadata,
+  UIDataTypes,
+  InferUITools<SandboxTools & HandoffTools>
+>
