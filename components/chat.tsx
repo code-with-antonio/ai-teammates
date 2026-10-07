@@ -48,6 +48,7 @@ import {
   ToolInput,
   ToolOutput,
 } from "@/components/ai-elements/tool"
+import { Badge } from "@/components/ui/badge"
 import type { Bot } from "@/db/schema"
 import type { ChatUIMessage } from "@/lib/sandbox-tools"
 import type { chatAgent } from "@/trigger/chat"
@@ -238,44 +239,78 @@ function ChatMessages({
   function handleSubmit(message: PromptInputMessage) {
     if (!message.text.trim()) return
     // The agent reads this turn's metadata to decide which bot answers
-    sendMessage(
-      { text: message.text },
-      selectedBot ? { metadata: { botId: selectedBot.id } } : undefined
-    )
+    // and the message keeps it too, to show who it was for
+    const metadata = selectedBot && { botId: selectedBot.id }
+    sendMessage({ text: message.text, metadata }, { metadata })
   }
 
   return (
     <div data-slot="chat" className="flex min-h-0 flex-1 flex-col">
       <Conversation>
         <ConversationContent className="mx-auto w-full max-w-3xl">
-          {messages.flatMap((message) =>
-            splitByAuthor(message, bots).map(({ author, parts }, i) => (
-              <Message
-                from={message.role}
-                key={`${message.id}-${i}`}
-                className={author && "flex-row items-start"}
-              >
-                {author && (
-                  <ChatAvatar seed={author.avatar} className="size-6" />
-                )}
-                <MessageContent>
-                  {parts.map((part, j) => {
-                    if (part.type === "text") {
-                      return (
-                        <MessageResponse key={`${message.id}-${i}-${j}`}>
-                          {part.text}
-                        </MessageResponse>
-                      )
-                    }
-                    if (part.type !== "dynamic-tool" && isToolUIPart(part)) {
-                      return <ToolCall key={part.toolCallId} part={part} />
-                    }
-                    return null
-                  })}
-                </MessageContent>
-              </Message>
-            ))
-          )}
+          {messages.flatMap((message) => {
+            // The bot a group chat's message was sent to
+            const addressee =
+              message.role === "user"
+                ? bots.find((bot) => bot.id === message.metadata?.botId)
+                : undefined
+
+            return splitByAuthor(message, bots).map(({ author, parts }, i) => {
+              const renderedParts = parts.map((part, j) => {
+                if (part.type === "text") {
+                  return (
+                    <MessageResponse
+                      key={`${message.id}-${i}-${j}`}
+                      // Flows the first paragraph inline, right after the tag
+                      className={
+                        addressee && j === 0
+                          ? "inline [&>p:first-child]:inline"
+                          : undefined
+                      }
+                    >
+                      {part.text}
+                    </MessageResponse>
+                  )
+                }
+                if (part.type !== "dynamic-tool" && isToolUIPart(part)) {
+                  return <ToolCall key={part.toolCallId} part={part} />
+                }
+                return null
+              })
+
+              return (
+                <Message
+                  from={message.role}
+                  key={`${message.id}-${i}`}
+                  className={author && "flex-row items-start"}
+                >
+                  {author && (
+                    <ChatAvatar seed={author.avatar} className="size-6" />
+                  )}
+                  <MessageContent>
+                    {addressee ? (
+                      // One block, so the tag and the text share a line and the text wraps under it
+                      <div>
+                        <Badge
+                          variant="outline"
+                          className="mr-1.5 max-w-40 pl-1 align-top"
+                        >
+                          <ChatAvatar
+                            seed={addressee.avatar}
+                            className="size-3.5"
+                          />
+                          <span className="truncate">{addressee.name}</span>
+                        </Badge>
+                        {renderedParts}
+                      </div>
+                    ) : (
+                      renderedParts
+                    )}
+                  </MessageContent>
+                </Message>
+              )
+            })
+          })}
         </ConversationContent>
         <ConversationScrollButton />
       </Conversation>
