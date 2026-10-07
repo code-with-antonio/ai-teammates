@@ -45,6 +45,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/toast"
 import { botInsertSchema, type Bot } from "@/db/schema"
+import { usePaywall } from "@/hooks/use-paywall"
 
 const presets = [
   {
@@ -308,7 +309,13 @@ function BotDialog({
 }) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const open = controlledOpen ?? uncontrolledOpen
-  const setOpen = onOpenChange ?? setUncontrolledOpen
+  const checkPaywall = usePaywall()
+
+  const setOpen = (open: boolean) => {
+    // Creating a bot is billable; editing or deleting one never is
+    if (open && !bot && !checkPaywall("bots")) return
+    ;(onOpenChange ?? setUncontrolledOpen)(open)
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

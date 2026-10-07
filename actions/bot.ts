@@ -16,8 +16,12 @@ import {
 import { createBotSandbox, deleteBotSandbox } from "@/lib/daytona"
 
 export async function createBot(values: BotInsert) {
-  const { isAuthenticated, userId } = await auth()
+  const { isAuthenticated, userId, has } = await auth()
   if (!isAuthenticated) throw new Error("Unauthorized")
+  // A bot always comes with a sandbox, so creating one takes both
+  if (!has({ feature: "bots" }) || !has({ feature: "sandboxes" })) {
+    throw new Error("Upgrade required")
+  }
 
   const data = botInsertSchema.parse(values)
 

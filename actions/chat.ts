@@ -18,6 +18,7 @@ import {
   groupChatInsertSchema,
   type GroupChatInsert,
 } from "@/db/schema"
+import type { Feature } from "@/lib/billing"
 import { getBotDesktopUrl } from "@/lib/daytona"
 import type { ChatUIMessage } from "@/lib/sandbox-tools"
 import { getChat } from "@/queries/chats"
@@ -32,15 +33,24 @@ async function assertChatOwner(chatId: string) {
   if (!chat) throw new Error("Chat not found")
 }
 
+// Billable actions are for plans that include the feature
+async function assertFeature(feature: Feature) {
+  const { has } = await clerkAuth()
+  if (!has({ feature })) throw new Error("Upgrade required")
+}
+
 export async function startChatSession(
   params: ChatStartSessionParams<typeof chatAgent>
 ) {
+  await assertFeature("bots")
   await assertChatOwner(params.chatId)
 
   return startSession(params)
 }
 
 export async function mintChatAccessToken(chatId: string) {
+  // Sending needs a token, so a session started on a paid plan ends with it
+  await assertFeature("bots")
   await assertChatOwner(chatId)
 
   return auth.createPublicToken({
@@ -59,6 +69,8 @@ export async function loadTranscript(params: { chatId: string }) {
 }
 
 export async function getDesktopUrl(chatId: string) {
+  await assertFeature("sandboxes")
+
   const chat = await getChat(chatId)
   // Only a direct chat has one desktop to show
   if (!chat || chat.kind !== "direct") throw new Error("Chat not found")

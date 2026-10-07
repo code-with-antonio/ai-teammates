@@ -13,10 +13,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import type { Bot } from "@/db/schema"
+import { usePaywall } from "@/hooks/use-paywall"
 
 function CreateMenu({ bots }: { bots: Pick<Bot, "id" | "name" | "avatar">[] }) {
   const [botDialogOpen, setBotDialogOpen] = useState(false)
   const [groupChatDialogOpen, setGroupChatDialogOpen] = useState(false)
+  const checkPaywall = usePaywall()
 
   return (
     <>
@@ -27,7 +29,9 @@ function CreateMenu({ bots }: { bots: Pick<Bot, "id" | "name" | "avatar">[] }) {
           <PlusIcon />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem onClick={() => setBotDialogOpen(true)}>
+          <DropdownMenuItem
+            onClick={() => checkPaywall("bots") && setBotDialogOpen(true)}
+          >
             <PlusIcon />
             Create new bot
           </DropdownMenuItem>

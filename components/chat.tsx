@@ -50,6 +50,7 @@ import {
 } from "@/components/ai-elements/tool"
 import { Badge } from "@/components/ui/badge"
 import type { Bot } from "@/db/schema"
+import { usePaywall } from "@/hooks/use-paywall"
 import type { ChatUIMessage } from "@/lib/sandbox-tools"
 import type { chatAgent } from "@/trigger/chat"
 
@@ -238,9 +239,12 @@ function ChatMessages({
   const [botId, setBotId] = useState(bots[0]?.id)
   // Falls back to the first one when the picked bot is removed from the group
   const selectedBot = bots.find((bot) => bot.id === botId) ?? bots[0]
+  const checkPaywall = usePaywall()
 
   function handleSubmit(message: PromptInputMessage) {
     if (!message.text.trim()) return
+    // Throwing keeps the draft in the input
+    if (!checkPaywall("bots")) throw new Error("Upgrade required")
     // The agent reads this turn's metadata to decide which bot answers
     // and the message keeps it too, to show who it was for
     const metadata = selectedBot && { botId: selectedBot.id }
