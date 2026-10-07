@@ -76,3 +76,21 @@ export async function deleteBotSandbox(sandboxId: string) {
     throw error
   }
 }
+
+// The IDs of every sandbox that is running or on its way in or out of it, which
+// is when Daytona bills for its CPU and memory
+export async function listRunningSandboxIds() {
+  const ids: string[] = []
+  for await (const sandbox of daytona.list({
+    states: ["started", "starting", "stopping"],
+  })) {
+    ids.push(sandbox.id)
+  }
+  return ids
+}
+
+// Its files stay, and it starts again the next time it is used
+export async function stopBotSandbox(sandboxId: string) {
+  const sandbox = await daytona.get(sandboxId)
+  if (sandbox.state === "started") await sandbox.stop()
+}

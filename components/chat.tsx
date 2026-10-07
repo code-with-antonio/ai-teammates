@@ -50,6 +50,7 @@ import {
 } from "@/components/ai-elements/tool"
 import { Badge } from "@/components/ui/badge"
 import type { Bot } from "@/db/schema"
+import { USAGE_LIMIT_ERROR } from "@/lib/billing"
 import { usePaywall } from "@/hooks/use-paywall"
 import type { ChatUIMessage } from "@/lib/sandbox-tools"
 import type { chatAgent } from "@/trigger/chat"
@@ -230,21 +231,25 @@ function ChatMessages({
   initialMessages: ChatUIMessage[]
   transport: TriggerChatTransport
 }) {
+  const { checkPlan, showUsageLimit } = usePaywall()
   const { messages, sendMessage, status, stop } = useChat<ChatUIMessage>({
     id: chatId,
     messages: initialMessages,
     transport,
+    // The agent refuses a turn once the period's allowance is spent
+    onError: (error) => {
+      if (error.message === USAGE_LIMIT_ERROR) showUsageLimit("ai")
+    },
   })
   // The bot the next message goes to, in a group chat
   const [botId, setBotId] = useState(bots[0]?.id)
   // Falls back to the first one when the picked bot is removed from the group
   const selectedBot = bots.find((bot) => bot.id === botId) ?? bots[0]
-  const checkPaywall = usePaywall()
 
   function handleSubmit(message: PromptInputMessage) {
     if (!message.text.trim()) return
     // Throwing keeps the draft in the input
-    if (!checkPaywall("bots")) throw new Error("Upgrade required")
+    if (!checkPlan("bots")) throw new Error("Upgrade required")
     // The agent reads this turn's metadata to decide which bot answers
     // and the message keeps it too, to show who it was for
     const metadata = selectedBot && { botId: selectedBot.id }

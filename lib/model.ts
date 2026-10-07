@@ -1,4 +1,5 @@
 import { neon } from "@neon/ai-sdk-provider"
+import type { LanguageModelUsage } from "ai"
 
 type Model = ReturnType<typeof neon>
 type CallOptions = Parameters<Model["doStream"]>[0]
@@ -50,4 +51,17 @@ export function chatModel(): Model {
     doGenerate: (options) => model.doGenerate(withImageToolResults(options)),
     doStream: (options) => model.doStream(withImageToolResults(options)),
   }
+}
+
+// Dollars per million tokens for the model above. The gateway bills the
+// provider's list price; it publishes no cheaper rate for cached input.
+const pricing = { input: 1.25, output: 10 }
+
+// What a call to the chat model cost, in millionths of a dollar
+export function chatModelCost(usage: LanguageModelUsage) {
+  // Dollars per million tokens is millionths of a dollar per token
+  return Math.ceil(
+    (usage.inputTokens ?? 0) * pricing.input +
+      (usage.outputTokens ?? 0) * pricing.output
+  )
 }

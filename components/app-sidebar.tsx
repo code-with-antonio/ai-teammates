@@ -1,4 +1,3 @@
-import { UserButton } from "@clerk/nextjs"
 import { formatDistanceToNowStrict } from "date-fns"
 
 import { ChatAvatar } from "@/components/chat-avatar"
@@ -17,6 +16,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { UserMenu } from "@/components/user-menu"
 import { getBots, getChats, type ChatWithBots } from "@/queries/bots"
 
 // A group shows its bots together, a direct chat shows its one bot
@@ -92,21 +92,7 @@ export async function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            {/* Clerk's own styles beat plain utilities, so the SidebarMenuButton classes are mirrored here as important. */}
-            <UserButton
-              showName
-              appearance={{
-                elements: {
-                  rootBox: "flex! w-full!",
-                  userButtonTrigger:
-                    "flex! h-8! w-full! items-center! justify-start! gap-2! overflow-hidden! rounded-md! p-2! text-left! text-sm! text-sidebar-foreground! shadow-none! ring-sidebar-ring! outline-hidden! hover:bg-sidebar-accent! hover:text-sidebar-accent-foreground! focus-visible:ring-2! active:bg-sidebar-accent! active:text-sidebar-accent-foreground! aria-expanded:bg-sidebar-accent! aria-expanded:text-sidebar-accent-foreground! group-data-[collapsible=icon]:p-1!",
-                  userButtonBox: "min-w-0! flex-1! gap-2!",
-                  userButtonAvatarBox: "order-first! size-6! shrink-0!",
-                  userButtonOuterIdentifier:
-                    "truncate! ps-0! text-left! text-sm! font-normal! text-inherit!",
-                },
-              }}
-            />
+            <UserMenu />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

@@ -21,6 +21,7 @@ import {
 import type { Feature } from "@/lib/billing"
 import { getBotDesktopUrl } from "@/lib/daytona"
 import type { ChatUIMessage } from "@/lib/sandbox-tools"
+import { getUsage } from "@/lib/usage"
 import { getChat } from "@/queries/chats"
 import type { chatAgent } from "@/trigger/chat"
 
@@ -74,6 +75,12 @@ export async function getDesktopUrl(chatId: string) {
   const chat = await getChat(chatId)
   // Only a direct chat has one desktop to show
   if (!chat || chat.kind !== "direct") throw new Error("Chat not found")
+
+  // Showing the desktop starts the sandbox
+  const usage = await getUsage(chat.userId)
+  if (!usage || usage.remaining.sandbox <= 0) {
+    throw new Error("Usage limit reached")
+  }
 
   return getBotDesktopUrl(chat.bots[0].sandboxId)
 }

@@ -53,7 +53,7 @@ function DesktopPanelProvider({
 }) {
   const [open, setOpen] = React.useState(false)
   const [status, setStatus] = React.useState<DesktopStatus>("idle")
-  const checkPaywall = usePaywall()
+  const { checkPlan, checkUsage } = usePaywall()
 
   // The VNC client draws into this element. It is never rendered by React, so
   // it can be moved between the panel and the dialog without reconnecting.
@@ -104,12 +104,15 @@ function DesktopPanelProvider({
     }
   }, [chatId, getScreen])
 
-  const toggle = React.useCallback(() => {
-    if (!open && !checkPaywall("sandboxes")) return
-    // Connect the first time the panel opens and keep it for later opens
-    if (!open && status === "idle") connect()
+  const toggle = React.useCallback(async () => {
+    if (!open) {
+      // Showing the desktop starts the sandbox
+      if (!checkPlan("sandboxes") || !(await checkUsage("sandbox"))) return
+      // Connect the first time the panel opens and keep it for later opens
+      if (status === "idle") connect()
+    }
     setOpen(!open)
-  }, [open, status, connect, checkPaywall])
+  }, [open, status, connect, checkPlan, checkUsage])
 
   const attachScreen = React.useCallback(
     (slot: HTMLElement) => {

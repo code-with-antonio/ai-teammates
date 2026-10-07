@@ -14,6 +14,7 @@ import {
   type BotInsert,
 } from "@/db/schema"
 import { createBotSandbox, deleteBotSandbox } from "@/lib/daytona"
+import { getUsage } from "@/lib/usage"
 
 export async function createBot(values: BotInsert) {
   const { isAuthenticated, userId, has } = await auth()
@@ -21,6 +22,11 @@ export async function createBot(values: BotInsert) {
   // A bot always comes with a sandbox, so creating one takes both
   if (!has({ feature: "bots" }) || !has({ feature: "sandboxes" })) {
     throw new Error("Upgrade required")
+  }
+  // The new sandbox starts running right away
+  const usage = await getUsage(userId)
+  if (!usage || usage.remaining.sandbox <= 0) {
+    throw new Error("Usage limit reached")
   }
 
   const data = botInsertSchema.parse(values)

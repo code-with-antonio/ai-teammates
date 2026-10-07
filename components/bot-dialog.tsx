@@ -309,11 +309,14 @@ function BotDialog({
 }) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const open = controlledOpen ?? uncontrolledOpen
-  const checkPaywall = usePaywall()
+  const { checkPlan, checkUsage } = usePaywall()
 
-  const setOpen = (open: boolean) => {
-    // Creating a bot is billable; editing or deleting one never is
-    if (open && !bot && !checkPaywall("bots")) return
+  const setOpen = async (open: boolean) => {
+    // Creating a bot is billable, and its sandbox starts running right away;
+    // editing or deleting one never is
+    if (open && !bot) {
+      if (!checkPlan("bots") || !(await checkUsage("sandbox"))) return
+    }
     ;(onOpenChange ?? setUncontrolledOpen)(open)
   }
 

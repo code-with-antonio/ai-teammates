@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm"
 import {
   index,
+  integer,
   pgEnum,
   pgTable,
   primaryKey,
@@ -72,6 +73,34 @@ export const chatMembers = pgTable(
   ]
 )
 
+export const usageKind = pgEnum("usage_kind", ["ai", "sandbox"])
+
+// The usage ledger: one row per metered event, only ever added to. What a user
+// has used in a billing period is the sum of their rows since it started.
+export const usageEntries = pgTable(
+  "usage_entries",
+  {
+    id: text()
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    // Clerk user ID
+    userId: text().notNull(),
+    kind: usageKind().notNull(),
+    // Millionths of a dollar of model spend for "ai", seconds a sandbox was
+    // running for "sandbox"
+    amount: integer().notNull(),
+    // Names the event that was metered, so writing it twice counts it once
+    idempotencyKey: text().notNull().unique(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("usage_entries_user_id_created_at_idx").on(
+      table.userId,
+      table.createdAt
+    ),
+  ]
+)
+
 export const botsRelations = relations(bots, ({ many }) => ({
   memberships: many(chatMembers),
 }))
@@ -135,5 +164,7 @@ export type GroupChatInsert = z.infer<typeof groupChatInsertSchema>
 
 export type Chat = typeof chats.$inferSelect
 export type NewChat = typeof chats.$inferInsert
+export type UsageKind = (typeof usageKind.enumValues)[number]
+export type NewUsageEntry = typeof usageEntries.$inferInsert
 export type ChatMember = typeof chatMembers.$inferSelect
 export type NewChatMember = typeof chatMembers.$inferInsert

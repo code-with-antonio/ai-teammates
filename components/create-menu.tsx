@@ -18,7 +18,7 @@ import { usePaywall } from "@/hooks/use-paywall"
 function CreateMenu({ bots }: { bots: Pick<Bot, "id" | "name" | "avatar">[] }) {
   const [botDialogOpen, setBotDialogOpen] = useState(false)
   const [groupChatDialogOpen, setGroupChatDialogOpen] = useState(false)
-  const checkPaywall = usePaywall()
+  const { checkPlan, checkUsage } = usePaywall()
 
   return (
     <>
@@ -30,7 +30,12 @@ function CreateMenu({ bots }: { bots: Pick<Bot, "id" | "name" | "avatar">[] }) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem
-            onClick={() => checkPaywall("bots") && setBotDialogOpen(true)}
+            onClick={async () => {
+              // A new bot's sandbox starts running right away
+              if (checkPlan("bots") && (await checkUsage("sandbox"))) {
+                setBotDialogOpen(true)
+              }
+            }}
           >
             <PlusIcon />
             Create new bot
