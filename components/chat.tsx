@@ -65,6 +65,8 @@ const toolTitles: Record<ToolPart["type"], string> = {
   "tool-readFile": "Read file",
   "tool-writeFile": "Write file",
   "tool-listFiles": "List files",
+  "tool-recall": "Recall",
+  "tool-remember": "Remember",
   "tool-mouseClick": "Click",
   "tool-mouseMove": "Move mouse",
   "tool-mouseDrag": "Drag",

@@ -1,12 +1,32 @@
-import { Daytona, DaytonaNotFoundError } from "@daytona/sdk"
+import { Daytona, DaytonaNotFoundError, type Sandbox } from "@daytona/sdk"
 
 // Reads DAYTONA_API_KEY from the environment. The endpoint is named here because
 // the SDK refuses to take it from an env var that .env.local also defines.
 const daytona = new Daytona({ apiUrl: "https://app.daytona.io/api" })
 
+// A bot's notes to itself, in its sandbox's home directory. Chats don't share
+// their transcripts, so this is what a bot carries from one chat to another.
+export const MEMORY_FILE = "MEMORY.md"
+
 // Every bot owns one sandbox; the label ties it back to the bot from Daytona's side
 export async function createBotSandbox(botId: string) {
   const sandbox = await daytona.create({ labels: { botId } })
+
+  try {
+    // Blank until the bot has something worth keeping. A command rather than
+    // an upload: the SDK's uploads can't load their form-data module when
+    // Next.js has bundled it. Commands start in the home directory.
+    const { exitCode, result } = await sandbox.process.executeCommand(
+      `touch ${MEMORY_FILE}`
+    )
+    if (exitCode !== 0)
+      throw new Error(`Creating ${MEMORY_FILE} failed: ${result}`)
+  } catch (error) {
+    // A sandbox nobody got the ID of would never be deleted
+    await daytona.delete(sandbox).catch(() => {})
+    throw error
+  }
+
   return sandbox.id
 }
 
@@ -15,6 +35,17 @@ export async function getBotSandbox(sandboxId: string) {
   const sandbox = await daytona.get(sandboxId)
   if (sandbox.state !== "started") await sandbox.start()
   return sandbox
+}
+
+// Everything a bot has saved to its memory. Bots older than the file have none
+// until this makes it.
+export async function readBotMemory(sandbox: Sandbox) {
+  const { exitCode, result } = await sandbox.process.executeCommand(
+    `touch ${MEMORY_FILE} && cat ${MEMORY_FILE}`
+  )
+  if (exitCode !== 0)
+    throw new Error(`Reading ${MEMORY_FILE} failed: ${result}`)
+  return result
 }
 
 // Where the sandbox image serves noVNC and its websocket
