@@ -5,6 +5,7 @@ import { Chat } from "@/components/chat"
 import { ChatHeader } from "@/components/chat-header"
 import { DesktopPanel, DesktopPanelProvider } from "@/components/desktop-panel"
 import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
+import { getBots } from "@/queries/bots"
 import { getChat } from "@/queries/chats"
 
 export default async function Page({
@@ -20,9 +21,14 @@ export default async function Page({
 
   // A group has several bots and so no single desktop to show
   if (chat.kind === "group") {
+    const bots = await getBots()
+
     return (
       <div className="flex h-svh flex-col">
-        <ChatHeader chat={chat} />
+        <ChatHeader
+          chat={chat}
+          bots={bots.map(({ id, name, avatar }) => ({ id, name, avatar }))}
+        />
         <Chat
           chatId={chat.id}
           bots={chat.bots.map(({ id, name, avatar }) => ({ id, name, avatar }))}

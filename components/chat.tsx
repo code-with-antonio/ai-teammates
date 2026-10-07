@@ -236,7 +236,8 @@ function ChatMessages({
   })
   // The bot the next message goes to, in a group chat
   const [botId, setBotId] = useState(bots[0]?.id)
-  const selectedBot = bots.find((bot) => bot.id === botId)
+  // Falls back to the first one when the picked bot is removed from the group
+  const selectedBot = bots.find((bot) => bot.id === botId) ?? bots[0]
 
   function handleSubmit(message: PromptInputMessage) {
     if (!message.text.trim()) return

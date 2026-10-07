@@ -1,11 +1,28 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { Trash2Icon } from "lucide-react"
 import { Controller, useForm } from "react-hook-form"
 
-import { createGroupChat } from "@/actions/chat"
+import {
+  createGroupChat,
+  deleteGroupChat,
+  updateGroupChat,
+} from "@/actions/chat"
 import { ChatAvatar } from "@/components/chat-avatar"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -16,6 +33,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog"
 import {
   Field,
@@ -29,34 +47,117 @@ import {
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import { toast } from "@/components/ui/toast"
-import { groupChatInsertSchema, type Bot } from "@/db/schema"
+import { groupChatInsertSchema, type Bot, type Chat } from "@/db/schema"
 
 type GroupChatBot = Pick<Bot, "id" | "name" | "avatar">
+type GroupChat = Pick<Chat, "id" | "name"> & { bots: Pick<Bot, "id">[] }
 
-function GroupChatForm({
-  bots,
-  onCreated,
+// Asks for confirmation, then deletes the group chat and leaves it
+function GroupChatDeleteButton({
+  chat,
+  onDeleted,
 }: {
+  chat: GroupChat
+  onDeleted: () => void
+}) {
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const onDelete = async () => {
+    setIsDeleting(true)
+    try {
+      await deleteGroupChat(chat.id)
+      toast.add({ type: "success", title: `${chat.name} is deleted` })
+      onDeleted()
+      router.push("/")
+    } catch {
+      toast.add({
+        type: "error",
+        title: "Couldn't delete the group chat",
+        description: "Something went wrong. Try again.",
+      })
+      setIsDeleting(false)
+    }
+  }
+
+  return (
+    // Stays open while the delete is running
+    <AlertDialog
+      open={open}
+      onOpenChange={(open) => !isDeleting && setOpen(open)}
+    >
+      <AlertDialogTrigger
+        render={
+          <Button type="button" variant="destructive" className="sm:mr-auto" />
+        }
+      >
+        <Trash2Icon data-icon="inline-start" />
+        Delete
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete {chat.name}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This deletes the group chat and its messages. The bots in it stay.
+            It can&apos;t be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            type="button"
+            variant="destructive"
+            disabled={isDeleting}
+            onClick={onDelete}
+          >
+            {isDeleting && <Spinner data-icon="inline-start" />}
+            Delete group
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
+// With a `chat` it edits that group chat, without one it creates a new one
+function GroupChatForm({
+  chat,
+  bots,
+  onSaved,
+}: {
+  chat?: GroupChat
   bots: GroupChatBot[]
-  onCreated: () => void
+  onSaved: () => void
 }) {
   const router = useRouter()
   const form = useForm({
     resolver: zodResolver(groupChatInsertSchema),
-    defaultValues: { name: "", botIds: [] as string[] },
+    defaultValues: {
+      name: chat?.name ?? "",
+      botIds: chat?.bots.map((bot) => bot.id) ?? [],
+    },
   })
   const { isSubmitting } = form.formState
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
-      const created = await createGroupChat(values)
-      toast.add({ type: "success", title: `${created.name} is ready` })
-      onCreated()
-      router.push(`/chats/${created.id}`)
+      if (chat) {
+        const updated = await updateGroupChat(chat.id, values)
+        toast.add({ type: "success", title: `${updated.name} is updated` })
+        onSaved()
+      } else {
+        const created = await createGroupChat(values)
+        toast.add({ type: "success", title: `${created.name} is ready` })
+        onSaved()
+        router.push(`/chats/${created.id}`)
+      }
     } catch {
       toast.add({
         type: "error",
-        title: "Couldn't create the group chat",
+        title: chat
+          ? "Couldn't update the group chat"
+          : "Couldn't create the group chat",
         description: "Something went wrong. Try again.",
       })
     }
@@ -129,38 +230,56 @@ function GroupChatForm({
         />
       </FieldGroup>
       <DialogFooter>
+        {chat && <GroupChatDeleteButton chat={chat} onDeleted={onSaved} />}
         <DialogClose render={<Button type="button" variant="outline" />}>
           Cancel
         </DialogClose>
         <Button type="submit" disabled={isSubmitting}>
           {isSubmitting && <Spinner data-icon="inline-start" />}
-          Create group
+          {chat ? "Save changes" : "Create group"}
         </Button>
       </DialogFooter>
     </form>
   )
 }
 
-// Has no trigger of its own; the parent opens it through `open` / `onOpenChange`
+// Renders its own trigger from `children`, as `trigger` if given. Without
+// children it has no trigger and is opened by the parent through `open` /
+// `onOpenChange`. Pass `chat` to edit that group chat instead of creating one.
 function GroupChatDialog({
+  chat,
   bots,
-  open,
+  trigger = <Button variant="secondary" />,
+  children,
+  open: controlledOpen,
   onOpenChange,
 }: {
+  chat?: GroupChat
   bots: GroupChatBot[]
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  trigger?: React.ReactElement
+  children?: React.ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const open = controlledOpen ?? uncontrolledOpen
+  const setOpen = onOpenChange ?? setUncontrolledOpen
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
+      {children && <DialogTrigger render={trigger}>{children}</DialogTrigger>}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>New group chat</DialogTitle>
+          <DialogTitle>
+            {chat ? "Edit group chat" : "New group chat"}
+          </DialogTitle>
           <DialogDescription>
-            Name the group and pick which bots are in it.
+            {chat
+              ? "Change its name or which bots are in it."
+              : "Name the group and pick which bots are in it."}
           </DialogDescription>
         </DialogHeader>
-        <GroupChatForm bots={bots} onCreated={() => onOpenChange(false)} />
+        <GroupChatForm chat={chat} bots={bots} onSaved={() => setOpen(false)} />
       </DialogContent>
     </Dialog>
   )

@@ -7,7 +7,7 @@ import {
   defaultStorage,
   type ChatStartSessionParams,
 } from "@trigger.dev/sdk/ai"
-import { and, eq, inArray } from "drizzle-orm"
+import { and, eq, inArray, notInArray } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 
 import { db } from "@/db"
@@ -98,4 +98,77 @@ export async function createGroupChat(values: GroupChatInsert) {
   revalidatePath("/", "layout")
 
   return chat
+}
+
+export async function updateGroupChat(chatId: string, values: GroupChatInsert) {
+  const { isAuthenticated, userId } = await clerkAuth()
+  if (!isAuthenticated) throw new Error("Unauthorized")
+
+  const data = groupChatInsertSchema.parse(values)
+  const botIds = [...new Set(data.botIds)]
+
+  // The IDs come from the browser; every one must be a bot of this user
+  const owned = await db
+    .select({ id: bots.id })
+    .from(bots)
+    .where(and(eq(bots.userId, userId), inArray(bots.id, botIds)))
+  if (botIds.length < 2 || owned.length !== botIds.length) {
+    throw new Error("Bot not found")
+  }
+
+  const chat = await db.transaction(async (tx) => {
+    const [chat] = await tx
+      .update(chats)
+      .set({ name: data.name })
+      .where(
+        and(
+          eq(chats.id, chatId),
+          eq(chats.userId, userId),
+          eq(chats.kind, "group")
+        )
+      )
+      .returning()
+    if (!chat) throw new Error("Chat not found")
+
+    await tx
+      .delete(chatMembers)
+      .where(
+        and(
+          eq(chatMembers.chatId, chatId),
+          notInArray(chatMembers.botId, botIds)
+        )
+      )
+
+    // Bots that stay keep the row they joined with, and so their place
+    await tx
+      .insert(chatMembers)
+      .values(botIds.map((botId) => ({ chatId, botId })))
+      .onConflictDoNothing()
+
+    return chat
+  })
+
+  revalidatePath("/", "layout")
+
+  return chat
+}
+
+export async function deleteGroupChat(chatId: string) {
+  const { isAuthenticated, userId } = await clerkAuth()
+  if (!isAuthenticated) throw new Error("Unauthorized")
+
+  // Memberships go with the chat; the bots stay
+  const [chat] = await db
+    .delete(chats)
+    .where(
+      and(
+        eq(chats.id, chatId),
+        eq(chats.userId, userId),
+        eq(chats.kind, "group")
+      )
+    )
+    .returning({ id: chats.id })
+  if (!chat) throw new Error("Chat not found")
+
+  revalidatePath("/", "layout")
 }
