@@ -1,12 +1,23 @@
 "use server"
 
+import { auth as clerkAuth } from "@clerk/nextjs/server"
 import { auth } from "@trigger.dev/sdk"
 import {
   chat,
   defaultStorage,
   type ChatStartSessionParams,
 } from "@trigger.dev/sdk/ai"
+import { and, eq, inArray } from "drizzle-orm"
+import { revalidatePath } from "next/cache"
 
+import { db } from "@/db"
+import {
+  bots,
+  chatMembers,
+  chats,
+  groupChatInsertSchema,
+  type GroupChatInsert,
+} from "@/db/schema"
 import { getBotDesktopUrl } from "@/lib/daytona"
 import type { ChatUIMessage } from "@/lib/sandbox-tools"
 import { getChat } from "@/queries/chats"
@@ -49,7 +60,42 @@ export async function loadTranscript(params: { chatId: string }) {
 
 export async function getDesktopUrl(chatId: string) {
   const chat = await getChat(chatId)
-  if (!chat) throw new Error("Chat not found")
+  // Only a direct chat has one desktop to show
+  if (!chat || chat.kind !== "direct") throw new Error("Chat not found")
 
-  return getBotDesktopUrl(chat.bot.sandboxId)
+  return getBotDesktopUrl(chat.bots[0].sandboxId)
+}
+
+export async function createGroupChat(values: GroupChatInsert) {
+  const { isAuthenticated, userId } = await clerkAuth()
+  if (!isAuthenticated) throw new Error("Unauthorized")
+
+  const data = groupChatInsertSchema.parse(values)
+  const botIds = [...new Set(data.botIds)]
+
+  // The IDs come from the browser; every one must be a bot of this user
+  const owned = await db
+    .select({ id: bots.id })
+    .from(bots)
+    .where(and(eq(bots.userId, userId), inArray(bots.id, botIds)))
+  if (botIds.length < 2 || owned.length !== botIds.length) {
+    throw new Error("Bot not found")
+  }
+
+  const chat = await db.transaction(async (tx) => {
+    const [chat] = await tx
+      .insert(chats)
+      .values({ userId, kind: "group", name: data.name })
+      .returning()
+
+    await tx
+      .insert(chatMembers)
+      .values(botIds.map((botId) => ({ chatId: chat.id, botId })))
+
+    return chat
+  })
+
+  revalidatePath("/", "layout")
+
+  return chat
 }

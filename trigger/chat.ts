@@ -1,21 +1,34 @@
 import { chat } from "@trigger.dev/sdk/ai"
 import { isStepCount } from "ai"
-import { asc, eq } from "drizzle-orm"
+import { and, asc, eq } from "drizzle-orm"
+import { z } from "zod"
 
 import { db } from "@/db"
 import { chatMembers, type Bot } from "@/db/schema"
 import { chatModel } from "@/lib/model"
 import { createSandboxTools, type ChatUIMessage } from "@/lib/sandbox-tools"
 
-// The bot answering in this chat. No session here: the chat's owner was checked
-// when the session started. Group chats fall back to their first bot for now.
-async function getChatBot(chatId: string) {
+// Sent with each message. Missing in direct chats, and when the session starts.
+const clientDataSchema = z
+  .object({
+    // The bot a group chat's message is addressed to
+    botId: z.string().optional(),
+  })
+  .optional()
+
+// The bot answering this turn. No session here: the chat's owner was checked
+// when the session started. botId comes from the browser, so it only ever picks
+// among the chat's own members; without one the first member answers.
+async function getChatBot(chatId: string, botId?: string) {
   const member = await db.query.chatMembers.findFirst({
-    where: eq(chatMembers.chatId, chatId),
-    orderBy: asc(chatMembers.joinedAt),
+    where: and(
+      eq(chatMembers.chatId, chatId),
+      botId ? eq(chatMembers.botId, botId) : undefined
+    ),
+    orderBy: [asc(chatMembers.joinedAt), asc(chatMembers.botId)],
     with: { bot: true },
   })
-  if (!member) throw new Error("Chat has no bot")
+  if (!member) throw new Error("Bot is not in this chat")
 
   return member.bot
 }
@@ -36,24 +49,36 @@ function buildInstructions(bot: Bot) {
 }
 
 // The transcript is kept per chatId by the agent's default transcript storage
-export const chatAgent = chat.withUIMessage<ChatUIMessage>().agent({
-  id: "chat",
-  // Declared here so screenshots stay images when earlier turns are replayed
-  tools: ({ chatId }) =>
-    createSandboxTools(async () => (await getChatBot(chatId)).sandboxId),
-  run: async ({ chatId, messages, tools, signal, streamText }) => {
-    // Read every turn, so edits to the bot apply to the next message
-    const bot = await getChatBot(chatId)
-
-    return streamText({
-      model: chatModel(),
-      // The managed streamText takes the prompt as `system` on every AI SDK version
-      system: buildInstructions(bot),
+export const chatAgent = chat
+  .withUIMessage<ChatUIMessage>()
+  .withClientData({ schema: clientDataSchema })
+  .agent({
+    id: "chat",
+    // Declared here so screenshots stay images when earlier turns are replayed
+    tools: ({ chatId, clientData }) =>
+      createSandboxTools(
+        async () => (await getChatBot(chatId, clientData?.botId)).sandboxId
+      ),
+    run: async ({
+      chatId,
+      clientData,
       messages,
       tools,
-      // Desktop work is one small action per step
-      stopWhen: isStepCount(50),
-      abortSignal: signal,
-    })
-  },
-})
+      signal,
+      streamText,
+    }) => {
+      // Read every turn, so edits to the bot apply to the next message
+      const bot = await getChatBot(chatId, clientData?.botId)
+
+      return streamText({
+        model: chatModel(),
+        // The managed streamText takes the prompt as `system` on every AI SDK version
+        system: buildInstructions(bot),
+        messages,
+        tools,
+        // Desktop work is one small action per step
+        stopWhen: isStepCount(50),
+        abortSignal: signal,
+      })
+    },
+  })

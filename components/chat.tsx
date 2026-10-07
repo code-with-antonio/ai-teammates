@@ -7,6 +7,7 @@ import {
   useTriggerChatTransport,
 } from "@trigger.dev/sdk/chat/react"
 import { isToolUIPart } from "ai"
+import { useState } from "react"
 
 import {
   loadTranscript,
@@ -14,6 +15,7 @@ import {
   startChatSession,
 } from "@/actions/chat"
 
+import { ChatAvatar } from "@/components/chat-avatar"
 import { CodeBlock } from "@/components/ai-elements/code-block"
 import {
   Conversation,
@@ -30,8 +32,14 @@ import {
   PromptInput,
   PromptInputFooter,
   type PromptInputMessage,
+  PromptInputSelect,
+  PromptInputSelectContent,
+  PromptInputSelectItem,
+  PromptInputSelectTrigger,
+  PromptInputSelectValue,
   PromptInputSubmit,
   PromptInputTextarea,
+  PromptInputTools,
 } from "@/components/ai-elements/prompt-input"
 import {
   Tool,
@@ -40,8 +48,11 @@ import {
   ToolInput,
   ToolOutput,
 } from "@/components/ai-elements/tool"
+import type { Bot } from "@/db/schema"
 import type { ChatUIMessage } from "@/lib/sandbox-tools"
 import type { chatAgent } from "@/trigger/chat"
+
+type ChatBot = Pick<Bot, "id" | "name" | "avatar">
 
 type ToolPart = Extract<
   ChatUIMessage["parts"][number],
@@ -143,7 +154,8 @@ function ToolCallDetails({ part }: { part: ToolPart }) {
   )
 }
 
-function Chat({ chatId }: { chatId: string }) {
+// `bots` are a group chat's members to pick from; a direct chat passes none
+function Chat({ chatId, bots }: { chatId: string; bots?: ChatBot[] }) {
   const transport = useTriggerChatTransport<typeof chatAgent>({
     task: "chat",
     accessToken: ({ chatId }) => mintChatAccessToken(chatId),
@@ -161,6 +173,7 @@ function Chat({ chatId }: { chatId: string }) {
     <ChatMessages
       key={chatId}
       chatId={chatId}
+      bots={bots}
       initialMessages={messages}
       transport={transport}
     />
@@ -169,10 +182,12 @@ function Chat({ chatId }: { chatId: string }) {
 
 function ChatMessages({
   chatId,
+  bots = [],
   initialMessages,
   transport,
 }: {
   chatId: string
+  bots?: ChatBot[]
   initialMessages: ChatUIMessage[]
   transport: TriggerChatTransport
 }) {
@@ -181,10 +196,17 @@ function ChatMessages({
     messages: initialMessages,
     transport,
   })
+  // The bot the next message goes to, in a group chat
+  const [botId, setBotId] = useState(bots[0]?.id)
+  const selectedBot = bots.find((bot) => bot.id === botId)
 
   function handleSubmit(message: PromptInputMessage) {
     if (!message.text.trim()) return
-    sendMessage({ text: message.text })
+    // The agent reads this turn's metadata to decide which bot answers
+    sendMessage(
+      { text: message.text },
+      selectedBot ? { metadata: { botId: selectedBot.id } } : undefined
+    )
   }
 
   return (
@@ -216,7 +238,35 @@ function ChatMessages({
       <div className="mx-auto w-full max-w-3xl p-4 pt-0">
         <PromptInput onSubmit={handleSubmit}>
           <PromptInputTextarea placeholder="Send a message..." />
-          <PromptInputFooter className="justify-end">
+          <PromptInputFooter
+            className={selectedBot ? undefined : "justify-end"}
+          >
+            {selectedBot && (
+              <PromptInputTools>
+                <PromptInputSelect
+                  value={selectedBot.id}
+                  onValueChange={(value) => setBotId(value as string)}
+                >
+                  <PromptInputSelectTrigger aria-label="Bot to talk to">
+                    <PromptInputSelectValue>
+                      <ChatAvatar
+                        seed={selectedBot.avatar}
+                        className="size-5"
+                      />
+                      {selectedBot.name}
+                    </PromptInputSelectValue>
+                  </PromptInputSelectTrigger>
+                  <PromptInputSelectContent>
+                    {bots.map((bot) => (
+                      <PromptInputSelectItem key={bot.id} value={bot.id}>
+                        <ChatAvatar seed={bot.avatar} className="size-5" />
+                        {bot.name}
+                      </PromptInputSelectItem>
+                    ))}
+                  </PromptInputSelectContent>
+                </PromptInputSelect>
+              </PromptInputTools>
+            )}
             <PromptInputSubmit status={status} onStop={stop} />
           </PromptInputFooter>
         </PromptInput>

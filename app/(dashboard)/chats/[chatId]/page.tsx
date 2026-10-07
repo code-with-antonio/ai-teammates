@@ -18,6 +18,19 @@ export default async function Page({
   const chat = await getChat(chatId)
   if (!chat) notFound()
 
+  // A group has several bots and so no single desktop to show
+  if (chat.kind === "group") {
+    return (
+      <div className="flex h-svh flex-col">
+        <ChatHeader chat={chat} />
+        <Chat
+          chatId={chat.id}
+          bots={chat.bots.map(({ id, name, avatar }) => ({ id, name, avatar }))}
+        />
+      </div>
+    )
+  }
+
   return (
     <DesktopPanelProvider key={chat.id} chatId={chat.id}>
       {/* The group sizes itself to its parent, so the viewport height goes here */}
@@ -29,7 +42,7 @@ export default async function Page({
               <Chat chatId={chat.id} />
             </div>
           </ResizablePanel>
-          <DesktopPanel name={chat.bot.name} />
+          <DesktopPanel name={chat.bots[0].name} />
         </ResizablePanelGroup>
       </div>
     </DesktopPanelProvider>

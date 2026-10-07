@@ -9,7 +9,7 @@ import {
 } from "drizzle-orm/pg-core"
 import { createInsertSchema } from "drizzle-zod"
 import { nanoid } from "nanoid"
-import type { z } from "zod"
+import { z } from "zod"
 
 export const bots = pgTable(
   "bots",
@@ -107,9 +107,31 @@ export const botInsertSchema = createInsertSchema(bots, {
     schema.trim().max(4000, "Keep it under 4000 characters."),
 }).omit({ id: true, userId: true, sandboxId: true, createdAt: true })
 
+// A group chat is a name and the bots in it; direct chats are made with their bot
+export const groupChatInsertSchema = createInsertSchema(chats, {
+  name: z
+    .string()
+    .trim()
+    .min(1, "Give the group a name.")
+    .max(50, "Keep it under 50 characters."),
+})
+  .omit({
+    id: true,
+    userId: true,
+    kind: true,
+    lastMessagePreview: true,
+    lastMessageAt: true,
+    createdAt: true,
+  })
+  .extend({
+    botIds: z.array(z.string()).min(2, "Pick at least two bots."),
+  })
+
 export type Bot = typeof bots.$inferSelect
 export type NewBot = typeof bots.$inferInsert
 export type BotInsert = z.infer<typeof botInsertSchema>
+
+export type GroupChatInsert = z.infer<typeof groupChatInsertSchema>
 
 export type Chat = typeof chats.$inferSelect
 export type NewChat = typeof chats.$inferInsert
