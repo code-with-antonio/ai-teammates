@@ -29,6 +29,7 @@
     "@novnc/novnc": "^1.7.0",
     "@radix-ui/react-use-controllable-state": "^1.2.6",
     "@rive-app/react-webgl2": "^4.36.0",
+    "@sentry/nextjs": "^11.5.0",
     "@shadcn/react": "^0.3.1",
     "@streamdown/cjk": "^1.0.4",
     "@streamdown/code": "^2.0.0",
