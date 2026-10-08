@@ -1,3 +1,5 @@
+import { sentryEsbuildPlugin } from "@sentry/bundler-plugins/esbuild";
+import { esbuildPlugin } from "@trigger.dev/build/extensions";
 import { defineConfig } from "@trigger.dev/sdk";
 
 export default defineConfig({
@@ -19,4 +21,17 @@ export default defineConfig({
     },
   },
   dirs: ["trigger"],
+  build: {
+    extensions: [
+      // Uploads source maps on deploy, so task errors in Sentry point at the source
+      esbuildPlugin(
+        sentryEsbuildPlugin({
+          org: "enra-r3",
+          project: "ai-teammates",
+          authToken: process.env.SENTRY_AUTH_TOKEN,
+        }),
+        { placement: "last", target: "deploy" }
+      ),
+    ],
+  },
 });

@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node"
 import { chat } from "@trigger.dev/sdk/ai"
 import { isStepCount } from "ai"
 import { asc, eq } from "drizzle-orm"
@@ -137,7 +138,19 @@ export const chatAgent = chat
       }
     },
     // Fires for stopped and failed turns too, which spent tokens all the same
-    onTurnComplete: async ({ chatId, runId, turn, usage }) => {
+    onTurnComplete: async ({ chatId, runId, turn, usage, error }) => {
+      // A failed turn leaves the run alive, so the global onFailure never sees it
+      if (
+        error &&
+        !(error instanceof Error && error.message === USAGE_LIMIT_ERROR)
+      ) {
+        Sentry.captureException(error, {
+          tags: { "trigger.task": "chat", "trigger.run": runId },
+          extra: { chatId, turn },
+        })
+        await Sentry.flush(2000)
+      }
+
       if (!usage) return
 
       const [row] = await db
