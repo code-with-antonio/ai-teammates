@@ -35,7 +35,7 @@ async function getChatBots(chatId: string, botId?: string) {
   })
 
   const bots = row?.members.map((member) => member.bot) ?? []
-  const bot = botId ? bots.find((bot) => bot.id === botId) : bots[0]
+  const bot = bots.find((bot) => bot.id === botId) ?? bots[0]
   if (!row || !bot) throw new Error("Bot is not in this chat")
 
   return { chat: row, bots, bot }
