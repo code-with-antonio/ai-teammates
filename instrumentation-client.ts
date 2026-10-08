@@ -17,7 +17,15 @@ Sentry.init({
   replaysSessionSampleRate: 0.1,
   replaysOnErrorSampleRate: 1.0,
 
-  integrations: [Sentry.replayIntegration()],
+  integrations: [
+    Sentry.replayIntegration(),
+    // Logs need no switch in SDK 11: Sentry.logger always sends. This adds
+    // whatever is written to console.warn and console.error, outside
+    // development, where that is mostly Fast Refresh and dev-key notices.
+    ...(process.env.NODE_ENV === "production"
+      ? [Sentry.consoleLoggingIntegration({ levels: ["warn", "error"] })]
+      : []),
+  ],
 })
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart

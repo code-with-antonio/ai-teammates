@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import type RFB from "@novnc/novnc"
+import * as Sentry from "@sentry/nextjs"
 import { RefreshCwIcon } from "lucide-react"
 
 import { getDesktopUrl } from "@/actions/chat"
@@ -76,6 +77,7 @@ function DesktopPanelProvider({
     rfbRef.current?.disconnect()
     rfbRef.current = null
     setStatus("connecting")
+    const startedAt = Date.now()
 
     try {
       const [url, { default: RFB }] = await Promise.all([
@@ -91,16 +93,29 @@ function DesktopPanelProvider({
       rfb.addEventListener("connect", () => {
         if (attempt !== attemptRef.current) return
         setStatus("connected")
+        Sentry.logger.info("Desktop connected", {
+          "chat.id": chatId,
+          "desktop.connect_ms": Date.now() - startedAt,
+        })
         if (interactiveRef.current) rfb.focus()
       })
-      rfb.addEventListener("disconnect", () => {
+      rfb.addEventListener("disconnect", (event) => {
         if (attempt !== attemptRef.current) return
         rfbRef.current = null
         setStatus("disconnected")
+        // Unclean is the connection dropping, or never opening at all
+        if (!event.detail.clean) {
+          Sentry.logger.warn("Desktop connection lost", { "chat.id": chatId })
+        }
       })
       rfbRef.current = rfb
-    } catch {
-      if (attempt === attemptRef.current) setStatus("disconnected")
+    } catch (error) {
+      if (attempt !== attemptRef.current) return
+      setStatus("disconnected")
+      Sentry.logger.error("Desktop failed to open", {
+        "chat.id": chatId,
+        ...(error instanceof Error && { "error.message": error.message }),
+      })
     }
   }, [chatId, getScreen])
 

@@ -15,4 +15,12 @@ Sentry.init({
 
   // Attach local variable values to stack frames
   includeLocalVariables: true,
+
+  // Logs need no switch in SDK 11: Sentry.logger always sends. This adds
+  // whatever is written to console.warn and console.error, outside
+  // development, where that is mostly dev-server notices.
+  integrations:
+    process.env.NODE_ENV === "production"
+      ? [Sentry.consoleLoggingIntegration({ levels: ["warn", "error"] })]
+      : [],
 })

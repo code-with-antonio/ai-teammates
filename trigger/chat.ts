@@ -107,6 +107,12 @@ export const chatAgent = chat
         if (Date.now() - checkedAt > 60_000) {
           const usage = await getUsage(userId)
           if (!usage || usage.remaining.sandbox <= 0) {
+            Sentry.logger.warn("Sandbox tool blocked: usage limit reached", {
+              "chat.id": chatId,
+              "user.id": userId,
+              "bot.id": current.id,
+              "usage.kind": "sandbox",
+            })
             throw new Error(
               "The sandbox hours for this billing period are used up, so the sandbox can't be used until the period resets."
             )
@@ -126,10 +132,24 @@ export const chatAgent = chat
           if (!target) throw new Error("No teammate in this chat has that id.")
           // Keeps a request from bouncing between bots
           if (held.has(target.id)) {
+            Sentry.logger.warn("Handoff refused: teammate already had it", {
+              "chat.id": chatId,
+              "user.id": userId,
+              "bot.id": current.id,
+              "handoff.bot.id": target.id,
+            })
             throw new Error(
               `${target.name} already had this request. Answer it yourself.`
             )
           }
+
+          Sentry.logger.info("Chat turn handed off", {
+            "chat.id": chatId,
+            "user.id": userId,
+            "bot.id": current.id,
+            "handoff.bot.id": target.id,
+            "handoff.count": held.size,
+          })
 
           current = target
           held.add(target.id)
@@ -139,34 +159,55 @@ export const chatAgent = chat
     },
     // Fires for stopped and failed turns too, which spent tokens all the same
     onTurnComplete: async ({ chatId, runId, turn, usage, error }) => {
+      const refused =
+        error instanceof Error && error.message === USAGE_LIMIT_ERROR
+
       // A failed turn leaves the run alive, so the global onFailure never sees it
-      if (
-        error &&
-        !(error instanceof Error && error.message === USAGE_LIMIT_ERROR)
-      ) {
+      if (error && !refused) {
         Sentry.captureException(error, {
           tags: { "trigger.task": "chat", "trigger.run": runId },
           extra: { chatId, turn },
         })
-        await Sentry.flush(2000)
       }
-
-      if (!usage) return
 
       const [row] = await db
         .select({ userId: chats.userId })
         .from(chats)
         .where(eq(chats.id, chatId))
-      if (!row) return
 
-      await recordUsage([
-        {
-          userId: row.userId,
-          kind: "ai",
-          amount: chatModelCost(usage),
-          idempotencyKey: `ai:${runId}:${turn}`,
-        },
-      ])
+      if (usage && row) {
+        await recordUsage([
+          {
+            userId: row.userId,
+            kind: "ai",
+            amount: chatModelCost(usage),
+            idempotencyKey: `ai:${runId}:${turn}`,
+          },
+        ])
+      }
+
+      // One line per turn: who spent what, and how it ended
+      Sentry.logger[error ? "warn" : "info"]("Chat turn finished", {
+        "chat.id": chatId,
+        "chat.turn": turn,
+        "chat.outcome": refused
+          ? "usage_limit"
+          : error
+            ? "failed"
+            : "completed",
+        "trigger.task": "chat",
+        "trigger.run": runId,
+        ...(row && { "user.id": row.userId }),
+        ...(usage && {
+          "gen_ai.usage.input_tokens": usage.inputTokens ?? 0,
+          "gen_ai.usage.output_tokens": usage.outputTokens ?? 0,
+          // Millionths of a dollar, as in the usage ledger
+          "usage.cost": chatModelCost(usage),
+        }),
+      })
+
+      // The run sleeps between turns, and may be frozen as soon as this returns
+      await Sentry.flush(2000)
     },
     run: async ({
       chatId,

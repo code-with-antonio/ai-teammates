@@ -1,6 +1,7 @@
 "use server"
 
 import { auth as clerkAuth } from "@clerk/nextjs/server"
+import * as Sentry from "@sentry/nextjs"
 import { auth } from "@trigger.dev/sdk"
 import {
   chat,
@@ -36,8 +37,14 @@ async function assertChatOwner(chatId: string) {
 
 // Billable actions are for plans that include the feature
 async function assertFeature(feature: Feature) {
-  const { has } = await clerkAuth()
-  if (!has({ feature })) throw new Error("Upgrade required")
+  const { has, userId } = await clerkAuth()
+  if (!has({ feature })) {
+    Sentry.logger.warn("Paid feature blocked: upgrade required", {
+      "billing.feature": feature,
+      ...(userId && { "user.id": userId }),
+    })
+    throw new Error("Upgrade required")
+  }
 }
 
 export async function startChatSession(
@@ -46,7 +53,11 @@ export async function startChatSession(
   await assertFeature("bots")
   await assertChatOwner(params.chatId)
 
-  return startSession(params)
+  const session = await startSession(params)
+
+  Sentry.logger.info("Chat session started", { "chat.id": params.chatId })
+
+  return session
 }
 
 export async function mintChatAccessToken(chatId: string) {
@@ -79,10 +90,27 @@ export async function getDesktopUrl(chatId: string) {
   // Showing the desktop starts the sandbox
   const usage = await getUsage(chat.userId)
   if (!usage || usage.remaining.sandbox <= 0) {
+    Sentry.logger.warn("Desktop blocked: usage limit reached", {
+      "user.id": chat.userId,
+      "chat.id": chatId,
+      "usage.kind": "sandbox",
+    })
     throw new Error("Usage limit reached")
   }
 
-  return getBotDesktopUrl(chat.bots[0].sandboxId)
+  const startedAt = Date.now()
+  const url = await getBotDesktopUrl(chat.bots[0].sandboxId)
+
+  // Waking a stopped sandbox and its desktop is the slow part of opening one
+  Sentry.logger.info("Desktop opened", {
+    "user.id": chat.userId,
+    "chat.id": chatId,
+    "bot.id": chat.bots[0].id,
+    "sandbox.id": chat.bots[0].sandboxId,
+    "sandbox.start_ms": Date.now() - startedAt,
+  })
+
+  return url
 }
 
 export async function createGroupChat(values: GroupChatInsert) {
@@ -115,6 +143,12 @@ export async function createGroupChat(values: GroupChatInsert) {
   })
 
   revalidatePath("/", "layout")
+
+  Sentry.logger.info("Group chat created", {
+    "user.id": userId,
+    "chat.id": chat.id,
+    "chat.bot_count": botIds.length,
+  })
 
   return chat
 }
@@ -169,6 +203,12 @@ export async function updateGroupChat(chatId: string, values: GroupChatInsert) {
 
   revalidatePath("/", "layout")
 
+  Sentry.logger.info("Group chat updated", {
+    "user.id": userId,
+    "chat.id": chat.id,
+    "chat.bot_count": botIds.length,
+  })
+
   return chat
 }
 
@@ -190,4 +230,9 @@ export async function deleteGroupChat(chatId: string) {
   if (!chat) throw new Error("Chat not found")
 
   revalidatePath("/", "layout")
+
+  Sentry.logger.info("Group chat deleted", {
+    "user.id": userId,
+    "chat.id": chat.id,
+  })
 }

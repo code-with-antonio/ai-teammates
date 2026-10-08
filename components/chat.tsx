@@ -1,6 +1,7 @@
 "use client"
 
 import { useChat } from "@ai-sdk/react"
+import * as Sentry from "@sentry/nextjs"
 import type { TriggerChatTransport } from "@trigger.dev/sdk/chat"
 import {
   useLoadTranscript,
@@ -238,7 +239,14 @@ function ChatMessages({
     transport,
     // The agent refuses a turn once the period's allowance is spent
     onError: (error) => {
-      if (error.message === USAGE_LIMIT_ERROR) showUsageLimit("ai")
+      if (error.message === USAGE_LIMIT_ERROR) return showUsageLimit("ai")
+
+      // Handled here, so nothing else tells us a reply never arrived
+      Sentry.logger.error("Chat reply failed", {
+        "chat.id": chatId,
+        "error.type": error.name,
+        "error.message": error.message,
+      })
     },
   })
   // The bot the next message goes to, in a group chat

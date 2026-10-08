@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useAuth } from "@clerk/nextjs"
+import * as Sentry from "@sentry/nextjs"
 import { useRouter } from "next/navigation"
 
 import { hasUsageLeft } from "@/actions/usage"
@@ -50,6 +51,9 @@ export function usePaywall() {
       // Not known yet: let the server decide
       if (!isLoaded || has?.({ feature })) return true
 
+      Sentry.logger.info("Paywall shown: upgrade required", {
+        "billing.feature": feature,
+      })
       block(
         "Upgrade to continue",
         planMessages[feature],
@@ -62,8 +66,12 @@ export function usePaywall() {
   )
 
   const showUsageLimit = React.useCallback(
-    (kind: UsageKind) =>
-      block("Usage limit reached", usageMessages[kind], "View usage", "/usage"),
+    (kind: UsageKind) => {
+      Sentry.logger.info("Paywall shown: usage limit reached", {
+        "usage.kind": kind,
+      })
+      block("Usage limit reached", usageMessages[kind], "View usage", "/usage")
+    },
     [block]
   )
 

@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node"
 import { schedules } from "@trigger.dev/sdk"
 import { inArray } from "drizzle-orm"
 
@@ -35,15 +36,32 @@ export const meterSandboxes = schedules.task({
       }))
     )
 
+    let stopped = 0
     for (const userId of new Set(owned.map((bot) => bot.userId))) {
       const usage = await getUsage(userId)
       if (usage && usage.remaining.sandbox > 0) continue
 
-      await Promise.all(
-        owned
-          .filter((bot) => bot.userId === userId)
-          .map((bot) => stopBotSandbox(bot.sandboxId))
-      )
+      const sandboxIds = owned
+        .filter((bot) => bot.userId === userId)
+        .map((bot) => bot.sandboxId)
+      await Promise.all(sandboxIds.map((id) => stopBotSandbox(id)))
+
+      stopped += sandboxIds.length
+      Sentry.logger.warn("Sandboxes stopped: usage limit reached", {
+        "user.id": userId,
+        "sandbox.count": sandboxIds.length,
+        // Null without a paid plan, which stops them just the same
+        "billing.paid": !!usage,
+      })
     }
+
+    Sentry.logger.info("Sandboxes metered", {
+      "sandbox.running": running.length,
+      "sandbox.billed": owned.length,
+      // Running at Daytona with no bot to charge: nobody pays for these
+      "sandbox.unowned": running.length - owned.length,
+      "sandbox.stopped": stopped,
+      "usage.seconds": INTERVAL_MINUTES * 60,
+    })
   },
 })
