@@ -29,7 +29,7 @@ function SearchCommand({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() === "k" && (event.metaKey || event.ctrlKey)) {
+      if (event.key?.toLowerCase() === "k" && (event.metaKey || event.ctrlKey)) {
         event.preventDefault()
         setOpen((open) => !open)
       }
