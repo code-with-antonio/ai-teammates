@@ -20,7 +20,7 @@ Every prompt, tool and limit is a file in the repository, with auth, billing, us
 
 One click gets you the web app, not the whole product. The chat agent runs on Trigger.dev and the database needs its tables, so there are **three steps to do after deploying**. They are listed under "After you deploy" below.
 
-## 🚂 About Hosting AI Teammates
+## About Hosting AI Teammates
 
 This template deploys one service: the Next.js app, built from the [public repository](https://github.com/code-with-antonio/ai-teammates). Everything else is a managed service you connect with a key.
 
@@ -81,13 +81,13 @@ Enable Billing and create a user plan with two features, slugged `bots` and `san
 
 Then open your Railway domain, sign up, pick a plan and create your first teammate.
 
-## 💡 Common Use Cases
+## Common Use Cases
 
 - A starting point for your own AI coworker product, with plans, usage limits and metering already working
 - Bots that each hold one job, such as research, QA or data entry, and hand requests to each other in a group chat
 - Learning how durable agent turns, per-bot sandboxes and computer use fit together in a real codebase
 
-## 📦 Dependencies for AI Teammates Hosting
+## Dependencies for AI Teammates Hosting
 
 - A [Clerk](https://clerk.com) application with Billing enabled
 - A [Neon](https://neon.com) project with Postgres and an AI Gateway
@@ -102,7 +102,7 @@ Then open your Railway domain, sign up, pick a plan and create your first teamma
 - [Trigger.dev deployment](https://trigger.dev/docs/deployment/overview)
 - [Neon connection strings](https://neon.com/docs/connect/connect-from-any-app)
 
-## 🤔 Why Deploy AI Teammates on Railway?
+## Why Deploy AI Teammates on Railway?
 
 Railway runs the one part of AI Teammates that needs a server. It builds the app from GitHub, gives it a public HTTPS domain, and only sends traffic to a new deployment once `/api/health` answers. There is nothing else to host.
 
