@@ -92,7 +92,7 @@ flowchart LR
 
 ## 🚀 Getting started
 
-You need Node.js 20.12+ and an account with [Clerk](https://cwa.run/clerk), [Neon](https://cwa.run/neon), [Trigger.dev](https://cwa.run/trigger-1), [Daytona](https://cwa.run/daytona) and [Sentry](https://cwa.run/sentry).
+You need Node.js 20.12+ and an account with [Clerk](https://cwa.run/clerk), [Neon](https://cwa.run/neon), [Trigger.dev](https://cwa.run/trigger-1) and [Daytona](https://cwa.run/daytona). [Sentry](https://cwa.run/sentry) is optional.
 
 **1. Clone and install**
 
@@ -121,27 +121,24 @@ DATABASE_URL_UNPOOLED=
 NEON_AI_GATEWAY_BASE_URL=
 NEON_AI_GATEWAY_TOKEN=
 
-# Trigger.dev: the development key
+# Trigger.dev: the development key and the project ref
 TRIGGER_SECRET_KEY=
+TRIGGER_PROJECT_REF=
 
 # Daytona
 DAYTONA_API_KEY=
 
-# Sentry: optional, uploads source maps on build
+# Sentry: optional. Without the DSN nothing is reported; the other three
+# upload source maps on build
+NEXT_PUBLIC_SENTRY_DSN=
+SENTRY_ORG=
+SENTRY_PROJECT=
 SENTRY_AUTH_TOKEN=
 ```
 
-**3. Point the code at your accounts**
+**3. Set up billing** — in Clerk, enable Billing and create a user plan with two features, slugged `bots` and `sandboxes`.
 
-| Replace                      | In                                                                                                 |
-| ---------------------------- | -------------------------------------------------------------------------------------------------- |
-| Trigger.dev project ref      | `trigger.config.ts`                                                                                |
-| Sentry DSN                   | `sentry.server.config.ts`, `sentry.edge.config.ts`, `instrumentation-client.ts`, `trigger/init.ts` |
-| Sentry org and project slugs | `next.config.ts`, `trigger.config.ts`                                                              |
-
-**4. Set up billing** — in Clerk, enable Billing and create a user plan with two features, slugged `bots` and `sandboxes`.
-
-**5. Push the schema and run**
+**4. Push the schema and run**
 
 ```bash
 npm run db:push            # create the tables
@@ -154,7 +151,7 @@ Open [http://localhost:3000](http://localhost:3000), sign up, pick a plan and cr
 ## 🚢 Deployment
 
 - **App** — create a [Railway](https://cwa.run/railway) service from the repository and add the variables from `.env.local`, with the **production** `TRIGGER_SECRET_KEY`.
-- **Tasks** — run `npx trigger.dev@4.7.3 deploy`, and add `DATABASE_URL`, `CLERK_SECRET_KEY`, `DAYTONA_API_KEY`, `NEON_AI_GATEWAY_BASE_URL` and `NEON_AI_GATEWAY_TOKEN` to the project's production environment in Trigger.dev.
+- **Tasks** — run `npx trigger.dev@4.7.3 deploy`, and add `DATABASE_URL`, `CLERK_SECRET_KEY`, `DAYTONA_API_KEY`, `NEON_AI_GATEWAY_BASE_URL`, `NEON_AI_GATEWAY_TOKEN` and, if you use Sentry, `NEXT_PUBLIC_SENTRY_DSN` to the project's production environment in Trigger.dev.
 
 ## 🤝 Contributing
 

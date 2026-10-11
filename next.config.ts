@@ -6,8 +6,8 @@ const nextConfig: NextConfig = {
 }
 
 export default withSentryConfig(nextConfig, {
-  org: "enra-r3",
-  project: "ai-teammates",
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
 
   // Uploads source maps on production builds; without it the build still succeeds.
   authToken: process.env.SENTRY_AUTH_TOKEN,

@@ -6,8 +6,9 @@ import { tasks } from "@trigger.dev/sdk"
 // OpenTelemetry.
 Sentry.init({
   defaultIntegrations: false,
-  // The same project the Next.js app reports to (sentry.server.config.ts)
-  dsn: "https://56bde339330e16c3056087197c52b213@o4511411455262720.ingest.us.sentry.io/4512220422012928",
+  // The same variable the Next.js app reads (sentry.server.config.ts), so both
+  // report to one project. It has to be set in Trigger.dev too.
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   environment:
     process.env.NODE_ENV === "production" ? "production" : "development",
 })

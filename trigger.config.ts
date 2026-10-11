@@ -3,7 +3,7 @@ import { esbuildPlugin } from "@trigger.dev/build/extensions";
 import { defineConfig } from "@trigger.dev/sdk";
 
 export default defineConfig({
-  project: "proj_wqftdufssveluxmruwzy",
+  project: process.env.TRIGGER_PROJECT_REF!,
   runtime: "node-24",
   logLevel: "log",
   // The max compute seconds a task is allowed to run. If the task run exceeds this duration, it will be stopped.
@@ -26,8 +26,8 @@ export default defineConfig({
       // Uploads source maps on deploy, so task errors in Sentry point at the source
       esbuildPlugin(
         sentryEsbuildPlugin({
-          org: "enra-r3",
-          project: "ai-teammates",
+          org: process.env.SENTRY_ORG,
+          project: process.env.SENTRY_PROJECT,
           authToken: process.env.SENTRY_AUTH_TOKEN,
         }),
         { placement: "last", target: "deploy" }
