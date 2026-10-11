@@ -16,7 +16,7 @@ AI teammates with a job, a memory and a cloud computer of their own.
 [![Clerk](https://img.shields.io/badge/Clerk-6C47FF?style=for-the-badge&logo=clerk&logoColor=white)](https://cwa.run/clerk)
 [![Sentry](https://img.shields.io/badge/Sentry-362D59?style=for-the-badge&logo=sentry&logoColor=white)](https://cwa.run/sentry)
 [![Neon](https://img.shields.io/badge/Neon-00E599?style=for-the-badge&logo=neon&logoColor=black)](https://cwa.run/neon)
-[![Railway](https://img.shields.io/badge/Railway-0B0D0E?style=for-the-badge&logo=railway&logoColor=white)](https://cwa.run/railway)
+<a href="https://railway.com/deploy/ai-teammates?referralCode=ANTONIO&utm_medium=integration&utm_source=template&utm_campaign=generic"><img src="https://railway.com/button.svg" alt="Deploy on Railway" height="28" /></a>
 
 </div>
 
@@ -32,13 +32,13 @@ AI Teammates is an open exploration of that idea. Every prompt, tool and limit i
 
 ## ✨ Features
 
-- 🧑‍💼 **Teammates with a job** — a name, a job and instructions that each bot keeps in every conversation.
-- 🖥️ **A computer per teammate** — a persistent Linux sandbox with a shell, a filesystem and a graphical desktop.
-- 👀 **Live desktop view** — watch a bot move the mouse and type, streamed into the chat.
-- 👥 **Group chats with handoffs** — a bot passes a request to the teammate whose job it is.
-- 🧠 **Memory across chats** — notes a bot saves in one conversation are there in all the others.
-- ♾️ **Durable turns** — a long desktop task survives refreshes, redeploys and closed tabs.
-- 💳 **Plans and usage limits** — subscriptions, with model spend and sandbox hours metered per billing period.
+- 🧑‍💼 **Teammates with a job**: a name, a job and instructions that each bot keeps in every conversation.
+- 🖥️ **A computer per teammate**: a persistent Linux sandbox with a shell, a filesystem and a graphical desktop.
+- 👀 **Live desktop view**: watch a bot move the mouse and type, streamed into the chat.
+- 👥 **Group chats with handoffs**: a bot passes a request to the teammate whose job it is.
+- 🧠 **Memory across chats**: notes a bot saves in one conversation are there in all the others.
+- ♾️ **Durable turns**: a long desktop task survives refreshes, redeploys and closed tabs.
+- 💳 **Plans and usage limits**: subscriptions, with model spend and sandbox hours metered per billing period.
 
 ## 🧱 Built with
 
@@ -136,7 +136,9 @@ SENTRY_PROJECT=
 SENTRY_AUTH_TOKEN=
 ```
 
-**3. Set up billing** — in Clerk, enable Billing and create a user plan with two features, slugged `bots` and `sandboxes`.
+**3. Set up billing**
+
+In Clerk, enable Billing and create a user plan with two features, slugged `bots` and `sandboxes`.
 
 **4. Push the schema and run**
 
@@ -150,8 +152,34 @@ Open [http://localhost:3000](http://localhost:3000), sign up, pick a plan and cr
 
 ## 🚢 Deployment
 
-- **App** — create a [Railway](https://cwa.run/railway) service from the repository and add the variables from `.env.local`, with the **production** `TRIGGER_SECRET_KEY`.
-- **Tasks** — run `npx trigger.dev@4.7.3 deploy`, and add `DATABASE_URL`, `CLERK_SECRET_KEY`, `DAYTONA_API_KEY`, `NEON_AI_GATEWAY_BASE_URL`, `NEON_AI_GATEWAY_TOKEN` and, if you use Sentry, `NEXT_PUBLIC_SENTRY_DSN` to the project's production environment in Trigger.dev.
+The app runs on Railway and the tasks run on Trigger.dev, so there are two things to deploy.
+
+**1. Deploy the app to [Railway](https://cwa.run/railway)**
+
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/ai-teammates?referralCode=ANTONIO&utm_medium=integration&utm_source=template&utm_campaign=generic)
+
+Fill in the variables it asks for. `TRIGGER_SECRET_KEY` is your Trigger.dev **production** key here, not the development one.
+
+**2. Deploy the tasks to Trigger.dev**
+
+```bash
+npx trigger.dev@4.7.3 deploy
+```
+
+**3. Give the tasks their variables**
+
+Add these to the project's production environment in Trigger.dev:
+
+```bash
+DATABASE_URL=
+CLERK_SECRET_KEY=
+DAYTONA_API_KEY=
+NEON_AI_GATEWAY_BASE_URL=
+NEON_AI_GATEWAY_TOKEN=
+
+# Optional: only if you use Sentry
+NEXT_PUBLIC_SENTRY_DSN=
+```
 
 ## 🤝 Contributing
 
