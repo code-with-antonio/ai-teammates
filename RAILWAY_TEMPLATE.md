@@ -4,6 +4,8 @@
 
 Every prompt, tool and limit is a file in the repository, with auth, billing, usage metering and observability already in place. You start from a working product and change whatever you like.
 
+🎬 [Watch it being built on YouTube](https://www.youtube.com/watch?v=mQBuZ6Dp0u0)
+
 ## ✨ Features
 
 - 🧑‍💼 **Teammates with a job** — a name, a job and instructions that each bot keeps in every conversation.
