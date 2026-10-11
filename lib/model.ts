@@ -39,6 +39,28 @@ function withImageToolResults(options: CallOptions): CallOptions {
   }
 }
 
+// The available models users can choose from. Each entry is shown in the
+// settings page model picker.
+export const MODELS = [
+  {
+    id: "gpt-5",
+    label: "GPT-5",
+    description: "OpenAI's most capable model.",
+  },
+  {
+    id: "gpt-4o",
+    label: "GPT-4o",
+    description: "Fast and efficient for most tasks.",
+  },
+  {
+    id: "claude-sonnet-4-5",
+    label: "Claude Sonnet 4.5",
+    description: "Anthropic's balanced model for complex reasoning.",
+  },
+] as const
+
+export type ModelId = (typeof MODELS)[number]["id"]
+
 // The model the chat agent talks to
 export function chatModel(): Model {
   const model = neon("gpt-5")
