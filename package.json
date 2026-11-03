@@ -36,6 +36,7 @@
     "@streamdown/code": "^2.0.0",
     "@streamdown/math": "^1.0.3",
     "@streamdown/mermaid": "^1.0.3",
+    "@trigger.dev/react-hooks": "4.7.3",
     "@trigger.dev/sdk": "4.7.3",
     "@types/novnc__novnc": "^1.6.0",
     "@xyflow/react": "^12.12.0",
