@@ -84,6 +84,18 @@ function buildInstructions(bot: Bot, group?: { chat: Chat; bots: Bot[] }) {
 }
 
 // The transcript is kept per chatId by the agent's default transcript storage
+// Stops a turn once its steps have cost what the user had left. The allowance is
+// passed in rather than read from an outer variable, so the check can't lose it.
+function budgetSpent(remainingAi: number) {
+  return ({
+    steps,
+  }: {
+    steps: ReadonlyArray<{ usage: Parameters<typeof chatModelCost>[0] }>
+  }) =>
+    steps.reduce((cost, step) => cost + chatModelCost(step.usage), 0) >=
+    remainingAi
+}
+
 export const chatAgent = chat
   .withUIMessage<ChatUIMessage>()
   .withClientData({ schema: clientDataSchema })
@@ -226,8 +238,10 @@ export const chatAgent = chat
       const group = row.kind === "group" ? { chat: row, bots } : undefined
 
       // Every turn, as a session outlives the plan it was started on
-      const usage = await getUsage(row.userId)
-      if (!usage || usage.remaining.ai <= 0) throw new Error(USAGE_LIMIT_ERROR)
+      const allowance = await getUsage(row.userId)
+      if (!allowance || allowance.remaining.ai <= 0) {
+        throw new Error(USAGE_LIMIT_ERROR)
+      }
 
       // Stamped on the reply and kept in the transcript with it
       chat.setUIMessageStreamOptions({
@@ -257,9 +271,7 @@ export const chatAgent = chat
           // Desktop work is one small action per step
           isStepCount(50),
           // A long turn ends once it has spent what was left
-          ({ steps }) =>
-            steps.reduce((cost, step) => cost + chatModelCost(step.usage), 0) >=
-            usage.remaining.ai,
+          budgetSpent(allowance.remaining.ai),
         ],
         abortSignal: signal,
       })
